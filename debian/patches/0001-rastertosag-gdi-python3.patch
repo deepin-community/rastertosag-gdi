@@ -1,0 +1,100 @@
+From 1a2f7443498a2826502d77e017ada2b31e0e8df3 Mon Sep 17 00:00:00 2001
+From: Didier Raboud <odyx@debian.org>
+Date: Sat, 10 Feb 2018 17:03:12 +0100
+Subject: rastertosag-gdi-python3
+
+---
+ rastertosag-gdi | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/rastertosag-gdi b/rastertosag-gdi
+index 52b08d7..28f8606 100755
+--- a/rastertosag-gdi
++++ b/rastertosag-gdi
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python -u
++#!/usr/bin/python3 -u
+ #coding=utf8
+ 
+ # CUPS raster filter for Ricoh Aficio SP1000s
+@@ -26,10 +26,10 @@ filename='-'
+ if len(sys.argv)>6:
+     filename=sys.argv[6]
+ if filename=='.' or filename=='-':
+-    input=sys.stdin
++    input=sys.stdin.buffer
+ else:
+-    input = open(sys.argv[6],'r')
+-output = sys.stdout
++    input = open(sys.argv[6],'rb')
++output = sys.stdout.buffer
+ 
+ def print_stderr(s,newline=True):
+     sys.stderr.write(str(s)+('\n' if newline else ''))
+@@ -39,7 +39,7 @@ def print_stderr(s,newline=True):
+ cups = input.read() # Read all bytes from stdin
+ 
+ sync_word=cups[0:4] # length of sync-word is 4 bytes: "3SaR"
+-version=int(cups[0])
++version=cups[0]-48
+ cups=cups[4:]
+ 
+ dtype={
+@@ -55,7 +55,7 @@ header_length={  # length of page header
+ }
+ 
+ def make_unpack_format(format,begin,end,split_count=1):
+-    return '<'+(str((end-begin+1)/dtype[format]['size']/split_count)+dtype[format]['b'])*split_count
++    return '<'+(str((end-begin+1)//dtype[format]['size']//split_count)+dtype[format]['b'])*split_count
+ 
+ hdr={
+     1: {}, # version 1 header
+@@ -159,10 +159,10 @@ def get_cups_line(y):
+     line=unpack('<'+str(numbytes)+'B',page_data[y*numbytes:(y+1)*numbytes])
+     ret=[]
+     extend=ret.extend
+-    for x in range(0,w/8):
++    for x in range(0,w//8):
+         extend(bytes[line[x]])
+     if w%8:
+-        extend(bytes[line[w/8]][:w%8])
++        extend(bytes[line[w//8]][:w%8])
+     return ret
+ 
+ FORMAT_WIDTH=0
+@@ -185,7 +185,7 @@ formats = {
+ def begin_document():
+     output.write(pack(
+         '>76sbbHHI',
+-        ') SAG-GDI RL;0;0;Comment Copyright Sagem Communication 2005. Version 1.0.0.0',
++        b') SAG-GDI RL;0;0;Comment Copyright Sagem Communication 2005. Version 1.0.0.0',
+         0x0D,0x0A,
+         0x1000,0x0200,
+         0
+@@ -217,7 +217,7 @@ current_block_data=''
+ current_line_length=0
+ def begin_block():
+     global current_block_data
+-    current_block_data=''
++    current_block_data=b''
+ 
+ def get_block_size():
+     return len(current_block_data)
+@@ -232,7 +232,7 @@ def write_px_data(col,length):
+     color = 1 if col else 0
+     color_bit = color << 6
+     first_byte = length%64
+-    second_byte = length/64
++    second_byte = length//64
+     two_bytes_bit = 0b10000000 if second_byte else 0b00000000
+     
+     px_data=pack('>B', two_bytes_bit | color_bit | first_byte)
+@@ -257,7 +257,7 @@ def write_cups():
+     w,h=min(hdr[1]['cupsWidth'],formats[format][FORMAT_WIDTH]),min(hdr[1]['cupsHeight'],formats[format][FORMAT_HEIGHT])
+     t=time()
+     for y in range(h):
+-        if y%(h/15)==0:
++        if y%(h//15)==0:
+             print_stderr('%d%% '%(int(float(y)/h*100),),False)
+ 
+         yline=get_cups_line(y)
